@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>test</title>
+    <script src="../build/react.js"></script>
+    <script src="../build/react-dom.js"></script>
+    <script src="../build/browser.min.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+    <script type="text/babel">
+
+        var OrderPeopleNum = React.createClass({
+            render: function () {
+                var chatUrl = "//m.medplus.net/pages/live/chatAppointment.html?liveId="+this.props.liveId;
+                if (this.props.liveState == 1) {
+                    return (
+                            <a href={chatUrl}>
+                                <div className="livMain_UlBotYue"></div>
+                            </a>
+                    )
+                } else {
+                    return (
+                            <p class="clear"><i></i><span>{this.props.onlineNum}</span></p>
+                    )
+                }
+            }
+        })
+
+        var ChatLi = React.createClass({
+            render: function () {
+                // 倒计时
+                let countDownTime = medCommon.countDown(this.props.liveStartTime.substring(0,19));
+                return (
+                        <li>
+                            <div className="livMain_ulMain">
+                                <div className="li_imgBox clear">
+                                    <a href={(this.props.liveState== 1 )? ("//thisIsUrl/chatAppointment.html?liveId=" + this.props.liveId || "javascript:;"):("//thisIsUrl/chatPage.html?liveId=" + this.props.liveId || "javascript:;") }>
+                                        <img src={this.props.attUrl} alt=""/>
+                                        <i className={this.props.liveTypeImg}></i>
+                                        <span className={this.props.liveStateImg}></span>
+                                    </a>
+                                </div>
+
+                                {(this.props.liveState==1)
+                                    ?
+                                        <dl className="li_liveBox clear">
+                                            <dt><a href={this.props.turnToUrl}>{this.props.liveTitle}</a></dt>
+                                            <dd>{countDownTime.startTime}</dd>
+                                            <dd><span>|</span>{countDownTime.betweenTime}开始</dd>
+                                        { this.props.onlineNum ? this.props.onlineNum != 0 && <dd><span>|</span><span>{this.props.onlineNum }人预约</span></dd>:""}
+                                        </dl>
+                                    :
+                                        <dl className="li_liveBox clear">
+                                            <dt><a href={this.props.turnToUrl}>{this.props.liveTitle}</a></dt>
+                                        </dl>}
+
+                            </div>
+                            <div className="livMain_UlBot clear">
+                                <p className="clear"><img src={this.props.logoUrl} alt=""/><span>{this.props.authName}</span></p>
+                                <OrderPeopleNum onlineNum={this.props.onlineNum} liveState={this.props.liveState} liveId={this.props.liveId}/>
+                            </div>
+                        </li>
+                )
+            }
+        });
+
+        var ChatList = React.createClass({
+            render: function () {
+                var key = 1;
+                //直播状态
+                var liveStateImg = ["", "", "li_imgNoStart","li_imgBoxLiv", "li_imgBoxEnd"];
+                //直播类型
+                var liveTypeImg = ["", "li_imgBoxLive", "li_imgBoxConference", "li_imgBoxRecommend", "li_imgBoxOpera", "li_imgBoxSurgical", "li_imgBoxDiscussion"];
+
+                if(this.props.noData){
+                    return (
+                            <div className="videoPage"><img src="//thisIsUrl/videoLost.png" alt=""/> <p>暂无直播</p></div>
+                    )
+                }else{
+                    var chatNodes = this.props.data.map(function (ele, index) {
+                        return (
+                                <ChatLi key={key++} liveState={ele.liveState} liveStateImg={liveStateImg[ele.liveState]}
+                                        liveTypeImg={liveTypeImg[ele.liveType]} liveTitle={ele.liveTitle}
+                                        authName={ele.authInfo.authName}
+                                        attUrl={ele.attUrl|| "/image/default/chatList.png" }
+                                        logoUrl={ele.authInfo.logoUrl}
+                                        onlineNum={ele.onlineNum}
+                                        liveId={ele.liveId}
+                                        liveStartTime={ele.liveStartTime}
+                                />
+                        )
+                    });
+                    return (
+                            <div>
+                                <div className="liveNewTitMain">
+                                    <div className="liveNewline">
+                                        <p><img src="//m.medplus.net/image/live/home_live_all lives.png" alt=""/><span>全部直播</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <ul className="livMain_ul">
+                                    {chatNodes}
+                                </ul>
+                                <div className="productMain_end"></div>
+                            </div>
+                    )
+                }
+
+
+            }
+        });
+
+        var ChatBox = React.createClass({
+            getInitialState: function () {
+                return {
+                    data: [],
+                    pageNum: 1,
+                    scrollpagination: true,  //是否可以滑动,
+                    noData:false
+                }
+            },
+            componentWillMount: function () {
+                this.loadChatList();
+            },
+            componentDidMount: function () {
+                this.handleScroll();
+            },
+            loadChatList: function () {
+                $.ajax({
+                    url: this.props.url,
+                    dataType: 'json',
+                    data: {
+                        paramJson: JSON.stringify({
+                            visitSiteId: "11",
+                            isHome: "1",
+                            sessionCustomerId: "",
+                            firstResult: (this.state.pageNum - 1) * 20,
+                            maxResult: 20
+                        })
+                    },
+                    cache: false,
+                    success: function (data) {
+                        if (data && data.responseObject && data.responseObject.responseData && data.responseObject.responseData.data_list) {
+                            var listData = this.state.data;
+                            for (var x in  data.responseObject.responseData.data_list) {
+                                listData.push(data.responseObject.responseData.data_list[x])
+                            }
+                            this.setState({data: listData, pageNum: ++this.state.pageNum, scrollpagination: true, noData:false});
+                        } else {
+                            this.setState({scrollpagination: false});
+                            data.responseObject.responseData.page_no == 1 && this.setState({
+                                noData:true
+                            });
+                            console.log("数据加载完成!")
+                        }
+                    }.bind(this),
+                    error: function (xhr, status, err) {
+                        console.error(this.props.url, status, err.toString());
+                    }.bind(this)
+                });
+            },
+            handleScroll: function () {
+                var that = this;
+                $(window).scroll(function () {
+                    var scrollTop = $(this).scrollTop();
+                    var scrollHeight = $(document).height();
+                    var windowHeight = $(this).height();
+                    if (!that.state.scrollpagination) {
+                        $(window).remove("scroll");
+                    } else {
+                        if (scrollTop + windowHeight == scrollHeight) {
+                            that.setState({scrollpagination: false});
+                            that.loadChatList();
+                        }
+                    }
+                });
+            },
+            render: function () {
+                return (
+                        <ChatList data={this.state.data} onScroll={this.handleScroll} noData ={this.state.noData}/>
+                )
+            }
+        });
+
+        ReactDOM.render(
+                <ChatBox url="/thisIsUrl/getMapList/"/>, document.getElementById("EV-livMain")
+        );
+
+    </script>
+</body>
+</html>
